@@ -12,17 +12,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/go-programming-tour-book/blog-service/pkg/tracer"
-
 	"github.com/gin-gonic/gin"
-	"github.com/gin-gonic/gin/binding"
 	"github.com/go-programming-tour-book/blog-service/global"
 	"github.com/go-programming-tour-book/blog-service/internal/model"
 	"github.com/go-programming-tour-book/blog-service/internal/routers"
-	"github.com/go-programming-tour-book/blog-service/pkg/logger"
 	"github.com/go-programming-tour-book/blog-service/pkg/setting"
-	"github.com/go-programming-tour-book/blog-service/pkg/validator"
-	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 var (
@@ -41,22 +35,11 @@ func init() {
 	if err != nil {
 		log.Fatalf("init.setupSetting err: %v", err)
 	}
-	err = setupLogger()
-	if err != nil {
-		log.Fatalf("init.setupLogger err: %v", err)
-	}
 	err = setupDBEngine()
 	if err != nil {
 		log.Fatalf("init.setupDBEngine err: %v", err)
 	}
-	err = setupValidator()
-	if err != nil {
-		log.Fatalf("init.setupValidator err: %v", err)
-	}
-	err = setupTracer()
-	if err != nil {
-		log.Fatalf("init.setupTracer err: %v", err)
-	}
+
 }
 
 // @title 博客系统
@@ -113,25 +96,12 @@ func setupSetting() error {
 	if err != nil {
 		return err
 	}
-	err = s.ReadSection("App", &global.AppSetting)
-	if err != nil {
-		return err
-	}
+
 	err = s.ReadSection("Database", &global.DatabaseSetting)
 	if err != nil {
 		return err
 	}
-	err = s.ReadSection("JWT", &global.JWTSetting)
-	if err != nil {
-		return err
-	}
-	err = s.ReadSection("Email", &global.EmailSetting)
-	if err != nil {
-		return err
-	}
 
-	global.AppSetting.DefaultContextTimeout *= time.Second
-	global.JWTSetting.Expire *= time.Second
 	global.ServerSetting.ReadTimeout *= time.Second
 	global.ServerSetting.WriteTimeout *= time.Second
 	if port != "" {
@@ -144,18 +114,6 @@ func setupSetting() error {
 	return nil
 }
 
-func setupLogger() error {
-	fileName := global.AppSetting.LogSavePath + "/" + global.AppSetting.LogFileName + global.AppSetting.LogFileExt
-	global.Logger = logger.NewLogger(&lumberjack.Logger{
-		Filename:  fileName,
-		MaxSize:   500,
-		MaxAge:    10,
-		LocalTime: true,
-	}, "", log.LstdFlags).WithCaller(2)
-
-	return nil
-}
-
 func setupDBEngine() error {
 	var err error
 	global.DBEngine, err = model.NewDBEngine(global.DatabaseSetting)
@@ -163,22 +121,5 @@ func setupDBEngine() error {
 		return err
 	}
 
-	return nil
-}
-
-func setupValidator() error {
-	global.Validator = validator.NewCustomValidator()
-	global.Validator.Engine()
-	binding.Validator = global.Validator
-
-	return nil
-}
-
-func setupTracer() error {
-	jaegerTracer, _, err := tracer.NewJaegerTracer("blog-service", "127.0.0.1:6831")
-	if err != nil {
-		return err
-	}
-	global.Tracer = jaegerTracer
 	return nil
 }
